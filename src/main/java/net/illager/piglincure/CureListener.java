@@ -36,7 +36,7 @@ public class CureListener implements Listener {
   @EventHandler
   public void onUseItem(PlayerInteractEntityEvent event) {
 
-    // Iteration is not with a zombified piglin
+    // Interaction is not with a zombified piglin
     if (event.getRightClicked().getType() != EntityType.ZOMBIFIED_PIGLIN)
       return;
 
