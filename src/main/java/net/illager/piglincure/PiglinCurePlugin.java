@@ -15,8 +15,4 @@ public class PiglinCurePlugin extends JavaPlugin {
   public void onEnable() {
     new CureListener(this);
   }
-
-  @Override
-  public void onDisable() {
-  }
 }

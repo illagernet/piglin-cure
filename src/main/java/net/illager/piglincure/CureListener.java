@@ -20,17 +20,13 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 public class CureListener implements Listener {
-
   private static final int CURE_DELAY = 3600;
   private PiglinCurePlugin plugin;
   private HashSet<UUID> curing = new HashSet<UUID>();
 
   public CureListener(PiglinCurePlugin plugin) {
     this.plugin = plugin;
-    plugin
-        .getServer()
-        .getPluginManager()
-        .registerEvents(this, plugin);
+    plugin.getServer().getPluginManager().registerEvents(this, plugin);
   }
 
   @EventHandler
@@ -41,14 +37,10 @@ public class CureListener implements Listener {
       return;
 
     final PigZombie zombifiedPiglin = (PigZombie) event.getRightClicked();
-    final UUID zpUuid = zombifiedPiglin.getUniqueId();
-    final Player player = event.getPlayer();
-    final ItemStack usedItem = player
-        .getInventory()
-        .getItem(event.getHand());
+    final ItemStack usedItem = event.getPlayer().getInventory().getItem(event.getHand());
 
     // Piglin is already being cured
-    if (curing.contains(zpUuid))
+    if (curing.contains(zombifiedPiglin.getUniqueId()))
       return;
 
     // Weakness effect is not applied to zombified piglin
@@ -59,54 +51,39 @@ public class CureListener implements Listener {
     if (usedItem.getType() != Material.GOLDEN_CARROT)
       return;
 
-    curing.add(zpUuid);
     usedItem.setAmount(usedItem.getAmount() - 1);
+    curePiglin(zombifiedPiglin, event.getPlayer());
+  }
 
-    // Produce immediate effects
-    player.playSound(
-        zombifiedPiglin,
-        Sound.ENTITY_ZOMBIFIED_PIGLIN_ANGRY,
-        SoundCategory.NEUTRAL,
-        1.0f,
-        1.0f);
-    final PotionEffect speedEffect = new PotionEffect(
-        PotionEffectType.SPEED,
-        CURE_DELAY,
-        2,
-        true);
-    zombifiedPiglin.addPotionEffect(speedEffect);
+  private void curePiglin(PigZombie patient, Player doctor) {
+    curing.add(patient.getUniqueId());
+
+    // Immediate effects
+    doctor.playSound(patient, Sound.ENTITY_ZOMBIFIED_PIGLIN_ANGRY, 1.0f, 1.0f);
+    patient.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, CURE_DELAY, 2, true));
 
     // Schedule delayed effects
-    Bukkit
-        .getScheduler()
-        .runTaskLater(this.plugin, new Runnable() {
-          @Override
-          public void run() {
-            final Piglin piglin = (Piglin) zombifiedPiglin
-                .getWorld()
-                .spawnEntity(zombifiedPiglin.getLocation(), EntityType.PIGLIN);
+    Bukkit.getScheduler().runTaskLater(this.plugin, new Runnable() {
+      @Override
+      public void run() {
+        final Piglin convert = (Piglin) patient.getWorld().spawnEntity(patient.getLocation(), EntityType.PIGLIN);
 
-            // Copy data
-            piglin.setAge(zombifiedPiglin.getAge());
-            final String customName = zombifiedPiglin.getCustomName();
-            if (customName != null)
-              piglin.setCustomName(customName);
-            final EntityEquipment pEquipment = piglin.getEquipment();
-            final EntityEquipment zpEquipment = zombifiedPiglin.getEquipment();
-            pEquipment.clear();
-            pEquipment.setItemInMainHand(zpEquipment.getItemInMainHand());
-            pEquipment.setItemInOffHand(zpEquipment.getItemInOffHand());
-            pEquipment.setArmorContents(zpEquipment.getArmorContents());
+        // Copy data from "patient" entity to "convert" entity
+        convert.setAge(patient.getAge());
+        final String customName = patient.getCustomName();
+        if (customName != null)
+          convert.setCustomName(customName);
+        final EntityEquipment convertEquipment = convert.getEquipment();
+        final EntityEquipment patientEquipment = patient.getEquipment();
+        convertEquipment.clear();
+        convertEquipment.setItemInMainHand(patientEquipment.getItemInMainHand());
+        convertEquipment.setItemInOffHand(patientEquipment.getItemInOffHand());
+        convertEquipment.setArmorContents(patientEquipment.getArmorContents());
 
-            zombifiedPiglin.remove();
-            player.playSound(
-                piglin,
-                Sound.ENTITY_PIGLIN_CELEBRATE,
-                SoundCategory.NEUTRAL,
-                1.0f,
-                1.0f);
-            curing.remove(zpUuid);
-          }
-        }, CURE_DELAY);
+        curing.remove(patient.getUniqueId());
+        patient.remove();
+        doctor.playSound(convert, Sound.ENTITY_PIGLIN_CELEBRATE, SoundCategory.NEUTRAL, 1.0f, 1.0f);
+      }
+    }, CURE_DELAY);
   }
 }
